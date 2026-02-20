@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stable Configurator — Design Your Dream Stable</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a1714;
+  --bg-warm: #211e19;
+  --surface: #2a2620;
+  --surface-hover: #342f28;
+  --border: #3d3730;
+  --text: #e8e0d4;
+  --text-muted: #9a8e7f;
+  --accent: #c4843e;
+  --accent-hover: #d4944e;
+  --accent-dim: rgba(196,132,62,0.15);
+  --success: #5a9a6a;
+  --danger: #b85450;
+  --blue: #5a8ab4;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --sans: 'DM Sans', -apple-system, sans-serif;
+  --radius: 8px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); }
+
+/* Layout */
+.app { display:flex; height:100vh; }
+.sidebar { width:320px; background:var(--bg-warm); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; flex-shrink:0; z-index:10; }
+.main { flex:1; display:flex; flex-direction:column; position:relative; }
+
+/* Sidebar Header */
+.sidebar-header { padding:20px 20px 16px; border-bottom:1px solid var(--border); }
+.logo { font-family:var(--serif); font-size:22px; color:var(--accent); letter-spacing:-0.5px; }
+.logo-sub { font-size:11px; color:var(--text-muted); margin-top:2px; letter-spacing:1px; text-transform:uppercase; }
+
+/* Tabs */
+.tabs { display:flex; border-bottom:1px solid var(--border); }
+.tab { flex:1; padding:10px; text-align:center; font-size:12px; font-weight:600; cursor:pointer; color:var(--text-muted); border-bottom:2px solid transparent; transition:all .2s; text-transform:uppercase; letter-spacing:0.5px; }
+.tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab:hover { color:var(--text); background:var(--surface); }
+
+/* Sidebar Content */
+.sidebar-content { flex:1; overflow-y:auto; padding:16px; }
+.sidebar-content::-webkit-scrollbar { width:6px; }
+.sidebar-content::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+.section-title { font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text-muted); margin:16px 0 10px; }
+.section-title:first-child { margin-top:0; }
+
+/* Component Cards */
+.component-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px; margin-bottom:8px; cursor:grab; transition:all .2s; display:flex; align-items:center; gap:12px; }
+.component-card:hover { border-color:var(--accent); background:var(--surface-hover); transform:translateY(-1px); }
+.component-card:active { cursor:grabbing; }
+.component-icon { width:40px; height:40px; background:var(--accent-dim); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.component-info h4 { font-size:13px; font-weight:600; }
+.component-info p { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+/* Properties Panel */
+.prop-group { margin-bottom:12px; }
+.prop-label { font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; }
+.prop-row { display:flex; gap:8px; align-items:center; }
+.prop-input { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:8px 10px; color:var(--text); font-size:13px; font-family:var(--sans); outline:none; }
+.prop-input:focus { border-color:var(--accent); }
+.prop-unit { font-size:11px; color:var(--text-muted); min-width:28px; }
+
+select.prop-input { cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239a8e7f' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
+
+.color-swatch { width:32px; height:32px; border-radius:6px; border:1px solid var(--border); cursor:pointer; }
+.color-row { display:flex; gap:6px; flex-wrap:wrap; }
+.color-option { width:28px; height:28px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:all .15s; }
+.color-option:hover, .color-option.active { border-color:var(--text); transform:scale(1.15); }
+
+/* Buttons */
+.btn { padding:10px 16px; border-radius:var(--radius); font-size:13px; font-weight:600; font-family:var(--sans); cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text); transition:all .2s; display:inline-flex; align-items:center; gap:6px; }
+.btn:hover { background:var(--surface-hover); border-color:var(--accent); }
+.btn-primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+.btn-primary:hover { background:var(--accent-hover); }
+.btn-danger { color:var(--danger); }
+.btn-danger:hover { background:rgba(184,84,80,0.15); border-color:var(--danger); }
+.btn-sm { padding:6px 10px; font-size:11px; }
+.btn-block { width:100%; justify-content:center; }
+
+.btn-group { display:flex; gap:8px; margin-top:12px; }
+
+/* Toolbar */
+.toolbar { display:flex; align-items:center; padding:8px 16px; background:var(--bg-warm); border-bottom:1px solid var(--border); gap:8px; }
+.toolbar-group { display:flex; align-items:center; gap:4px; padding:0 8px; border-right:1px solid var(--border); }
+.toolbar-group:last-child { border-right:none; }
+.toolbar-btn { width:36px; height:36px; border-radius:6px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:16px; transition:all .15s; }
+.toolbar-btn:hover { background:var(--surface); color:var(--text); }
+.toolbar-btn.active { background:var(--accent-dim); color:var(--accent); }
+.toolbar-label { font-size:11px; color:var(--text-muted); margin-right:4px; }
+.toolbar-spacer { flex:1; }
+.zoom-display { font-size:12px; color:var(--text-muted); min-width:40px; text-align:center; font-variant-numeric:tabular-nums; }
+
+/* Canvas Area */
+.canvas-container { flex:1; position:relative; overflow:hidden; background:#1e1b17; }
+#canvas2d { width:100%; height:100%; cursor:crosshair; }
+#canvas3d { width:100%; height:100%; display:none; }
+#walkthroughCanvas { width:100%; height:100%; display:none; }
+
+/* Status Bar */
+.status-bar { display:flex; align-items:center; padding:4px 16px; background:var(--bg-warm); border-top:1px solid var(--border); font-size:11px; color:var(--text-muted); gap:16px; }
+.status-indicator { width:6px; height:6px; border-radius:50%; background:var(--success); }
+
+/* View Mode Toggle */
+.view-toggle { display:flex; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border); overflow:hidden; }
+.view-toggle-btn { padding:6px 14px; font-size:12px; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--text-muted); font-family:var(--sans); transition:all .15s; }
+.view-toggle-btn.active { background:var(--accent); color:#fff; }
+.view-toggle-btn:hover:not(.active) { color:var(--text); background:var(--surface-hover); }
+
+/* Grid overlay info */
+.canvas-overlay { position:absolute; top:12px; right:12px; display:flex; flex-direction:column; gap:8px; z-index:5; pointer-events:none; }
+.overlay-badge { background:rgba(26,23,20,0.85); backdrop-filter:blur(8px); padding:6px 12px; border-radius:6px; font-size:11px; color:var(--text-muted); border:1px solid var(--border); pointer-events:auto; }
+
+/* Walkthrough Controls Overlay */
+.walkthrough-controls { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); background:rgba(26,23,20,0.9); backdrop-filter:blur(12px); padding:12px 24px; border-radius:12px; border:1px solid var(--border); display:none; z-index:5; text-align:center; }
+.walkthrough-controls p { font-size:12px; color:var(--text-muted); margin-bottom:8px; }
+.walkthrough-controls .keys { display:flex; gap:4px; justify-content:center; }
+.key { background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:4px 10px; font-size:12px; font-weight:600; min-width:32px; text-align:center; }
+
+/* Export Modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:100; display:none; align-items:center; justify-content:center; }
+.modal-overlay.active { display:flex; }
+.modal { background:var(--bg-warm); border:1px solid var(--border); border-radius:12px; padding:28px; width:440px; max-width:90vw; box-shadow:var(--shadow); }
+.modal h3 { font-family:var(--serif); font-size:20px; margin-bottom:16px; }
+.modal-actions { display:flex; gap:8px; margin-top:20px; justify-content:flex-end; }
+
+/* Delete prompt */
+.delete-hint { position:absolute; bottom:12px; left:12px; font-size:11px; color:var(--text-muted); background:rgba(26,23,20,0.85); padding:6px 10px; border-radius:6px; z-index:5; display:none; }
+
+/* Dimension labels on canvas */
+.dim-label { font-size:10px; fill:var(--text-muted); font-family:var(--sans); }
+
+/* Responsive */
+@media (max-width:900px) {
+  .sidebar { width:260px; }
+}
+@media (max-width:700px) {
+  .app { flex-direction:column; }
+  .sidebar { width:100%; height:auto; max-height:40vh; border-right:none; border-bottom:1px solid var(--border); }
+  .canvas-container { min-height:50vh; }
+}
+
+/* Scrollbar for sidebar */
+.sidebar-content { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+
+/* Selection highlight */
+.selected-item { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* Material summary table */
+.summary-table { width:100%; border-collapse:collapse; font-size:12px; }
+.summary-table th, .summary-table td { padding:6px 8px; text-align:left; border-bottom:1px solid var(--border); }
+.summary-table th { color:var(--text-muted); font-weight:600; text-transform:uppercase; font-size:10px; letter-spacing:0.5px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">StableForge</div>
+      <div class="logo-sub">Stable Design Configurator</div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="components">Components</div>
+      <div class="tab" data-tab="properties">Properties</div>
+      <div class="tab" data-tab="materials">Materials</div>
+      <div class="tab" data-tab="export">Export</div>
+    </div>
+    <div class="sidebar-content" id="sidebarContent">
+      <!-- Components Tab -->
+      <div id="tab-components" class="tab-panel">
+        <div class="section-title">Stable Bays</div>
+        <div class="component-card" draggable="true" data-type="standard-bay">
+          <div class="component-icon">🐴</div>
+          <div class="component-info">
+            <h4>Standard Bay</h4>
+            <p>3600 × 3600 mm</p>
+          </div>
+        </div>
+        <div class="component-card" draggable="true" data-type="large-bay">
+          <div class="component-icon">🐎</div>
+          <div class="component-info">
+            <h4>Large Bay</h4>
+            <p>3600 × 4200 mm</p>
+          </div>
+        </div>
+        <div class="component-card" draggable="true" data-type="foaling-bay">
+          <div class="component-icon">🍼</div>
+          <div class="component-info">
+            <h4>Foaling Bay</h4>
+            <p>4800 × 4800 mm</p>
+          </div>
+        </div>
+
+        <div class="section-title">Functional Areas</div>
+        <div class="component-card" draggable="true" data-type="wash-bay">
+          <div class="component-icon">🚿</div>
+          <div class="component-info">
+            <h4>Wash Bay</h4>
+            <p>3600 × 3000 mm</p>
+          </div>
+        </div>
+        <div class="component-card" draggable="true" data-type="tack-room">
+          <div class="component-icon">🪝</div>
+          <div class="component-info">
+            <h4>Tack Room</h4>
+            <p>3600 × 3000 mm</p>
+          </div>
+        </div>
+        <div class="component-card" draggable="true" data-type="feed-room">
+          <div class="component-icon">🌾</div>
+          <div class="component-info">
+            <h4>Feed Room</h4>
+            <p>3000 × 3000 mm</p>
+          </div>
+        </div>
+
+        <div class="section-title">Structures</div>
+        <div class="component-card" draggable="true" data-type="breezeway">
+          <div class="component-icon">🏛️</div>
+          <div class="component-info">
+            <h4>Breezeway</h4>
+            <p>3600 × 12000 mm</p>
+          </div>
+        </div>
+        <div class="component-card" draggable="true" data-type="roof-extension">
+          <div class="component-icon">🏠</div>
+          <div class="component-info">
+            <h4>Roof Extension</h4>
+            <p>2400 × 3600 mm</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Properties Tab -->
+      <div id="tab-properties" class="tab-panel" style="display:none;">
+        <div id="noSelection" style="color:var(--text-muted); font-size:13px; text-align:center; padding:40px 0;">
+          <p style="font-size:28px; margin-bottom:12px;">⬜</p>
+          Click an element on the canvas to edit its properties
+        </div>
+        <div id="propsPanel" style="display:none;">
+          <div class="section-title">Selected Element</div>
+          <div id="selectedName" style="font-size:15px; font-weight:600; margin-bottom:16px;"></div>
+          
+          <div class="prop-group">
+            <div class="prop-label">Width</div>
+            <div class="prop-row">
+              <input type="number" class="prop-input" id="propWidth" step="100" min="1000">
+              <span class="prop-unit">mm</span>
+            </div>
+          </div>
+          <div class="prop-group">
+            <div class="prop-label">Depth</div>
+            <div class="prop-row">
+              <input type="number" class="prop-input" id="propDepth" step="100" min="1000">
+              <span class="prop-unit">mm</span>
+            </div>
+          </div>
+          <div class="prop-group">
+            <div class="prop-label">Wall Height</div>
+            <div class="prop-row">
+              <input type="number" class="prop-input" id="propHeight" step="100" min="2000" max="5000">
+              <span class="prop-unit">mm</span>
+            </div>
+          </div>
+          <div class="prop-group">
+            <div class="prop-label">Rotation</div>
+            <div class="prop-row">
+              <select class="prop-input" id="propRotation">
+                <option value="0">0°</option>
+                <option value="90">90°</option>
+                <option value="180">180°</option>
+                <option value="270">270°</option>
+              </select>
+            </div>
+          </div>
+          <div class="prop-group">
+            <div class="prop-label">Door Type</div>
+            <div class="prop-row">
+              <select class="prop-input" id="propDoor">
+                <option value="sliding">Sliding Door</option>
+                <option value="hinged">Hinged Door</option>
+                <option value="dutch">Dutch Door (split)</option>
+                <option value="none">No Door</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-sm" onclick="duplicateSelected()">⧉ Duplicate</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSelected()">✕ Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Materials Tab -->
+      <div id="tab-materials" class="tab-panel" style="display:none;">
+        <div class="section-title">Roof Colour</div>
+        <div class="color-row" id="roofColors">
+          <div class="color-option active" style="background:#5a5a5a;" data-color="#5a5a5a" data-target="roof" title="Monument"></div>
+          <div class="color-option" style="background:#2d4a2d;" data-color="#2d4a2d" data-target="roof" title="Cottage Green"></div>
+          <div class="color-option" style="background:#6b3a3a;" data-color="#6b3a3a" data-target="roof" title="Manor Red"></div>
+          <div class="color-option" style="background:#4a3d2e;" data-color="#4a3d2e" data-target="roof" title="Jasper"></div>
+          <div class="color-option" style="background:#1a1a2e;" data-color="#1a1a2e" data-target="roof" title="Deep Ocean"></div>
+          <div class="color-option" style="background:#d4c5a9;" data-color="#d4c5a9" data-target="roof" title="Classic Cream"></div>
+        </div>
+
+        <div class="section-title">Wall Material</div>
+        <div class="color-row" id="wallColors">
+          <div class="color-option active" style="background:#8b7355;" data-color="#8b7355" data-target="wall" title="Timber"></div>
+          <div class="color-option" style="background:#a0a0a0;" data-color="#a0a0a0" data-target="wall" title="Steel Grey"></div>
+          <div class="color-option" style="background:#d4c5a9;" data-color="#d4c5a9" data-target="wall" title="Cream"></div>
+          <div class="color-option" style="background:#f5f0e8;" data-color="#f5f0e8" data-target="wall" title="White"></div>
+          <div class="color-option" style="background:#5a3d2b;" data-color="#5a3d2b" data-target="wall" title="Dark Timber"></div>
+        </div>
+
+        <div class="section-title">Post Material</div>
+        <div class="color-row" id="postColors">
+          <div class="color-option active" style="background:#6b4226;" data-color="#6b4226" data-target="post" title="Hardwood"></div>
+          <div class="color-option" style="background:#808080;" data-color="#808080" data-target="post" title="Steel"></div>
+          <div class="color-option" style="background:#1a1a1a;" data-color="#1a1a1a" data-target="post" title="Black Steel"></div>
+        </div>
+
+        <div class="section-title">Floor</div>
+        <div class="color-row" id="floorColors">
+          <div class="color-option active" style="background:#8a7a60;" data-color="#8a7a60" data-target="floor" title="Compacted Earth"></div>
+          <div class="color-option" style="background:#a0a0a0;" data-color="#a0a0a0" data-target="floor" title="Concrete"></div>
+          <div class="color-option" style="background:#b8986b;" data-color="#b8986b" data-target="floor" title="Rubber Mat"></div>
+        </div>
+      </div>
+
+      <!-- Export Tab -->
+      <div id="tab-export" class="tab-panel" style="display:none;">
+        <div class="section-title">Export Options</div>
+        
+        <button class="btn btn-block" onclick="exportPDF()" style="margin-bottom:8px;">
+          📄 Export PDF Floor Plan
+        </button>
+        <button class="btn btn-block" onclick="exportImage3D()" style="margin-bottom:8px;">
+          🖼️ Export 3D Render Image
+        </button>
+        <button class="btn btn-block" onclick="generateShareLink()" style="margin-bottom:8px;">
+          🔗 Generate Share Link
+        </button>
+
+        <div class="section-title">Material Summary</div>
+        <div id="materialSummary">
+          <table class="summary-table">
+            <thead>
+              <tr><th>Item</th><th>Qty</th><th>Area</th></tr>
+            </thead>
+            <tbody id="summaryBody">
+              <tr><td colspan="3" style="color:var(--text-muted);">Add components to see summary</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-title" style="margin-top:20px;">Design Info</div>
+        <div id="designInfo" style="font-size:12px; color:var(--text-muted);">
+          <p>Total footprint: <span id="totalArea">0</span> m²</p>
+          <p>Components: <span id="totalComponents">0</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Area -->
+  <div class="main">
+    <div class="toolbar">
+      <div class="toolbar-group">
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" data-view="2d">2D Plan</button>
+          <button class="view-toggle-btn" data-view="3d">3D View</button>
+          <button class="view-toggle-btn" data-view="walkthrough">Walk</button>
+        </div>
+      </div>
+      <div class="toolbar-group" id="toolbar2d">
+        <button class="toolbar-btn" onclick="snapToggle()" id="snapBtn" title="Toggle Grid Snap">⊞</button>
+        <button class="toolbar-btn" onclick="zoomIn()" title="Zoom In">+</button>
+        <span class="zoom-display" id="zoomDisplay">100%</span>
+        <button class="toolbar-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+        <button class="toolbar-btn" onclick="zoomFit()" title="Fit to View">⊡</button>
+      </div>
+      <div class="toolbar-spacer"></div>
+      <div class="toolbar-group">
+        <button class="toolbar-btn" onclick="undo()" title="Undo">↩</button>
+        <button class="toolbar-btn" onclick="redo()" title="Redo">↪</button>
+      </div>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="canvas2d"></canvas>
+      <canvas id="canvas3d"></canvas>
+      <canvas id="walkthroughCanvas"></canvas>
+      
+      <div class="canvas-overlay">
+        <div class="overlay-badge" id="dimensionBadge"></div>
+      </div>
+
+      <div class="walkthrough-controls" id="walkthroughControls">
+        <p>Use keyboard or click & drag to look around</p>
+        <div class="keys">
+          <span class="key">W</span>
+          <span class="key">A</span>
+          <span class="key">S</span>
+          <span class="key">D</span>
+          <span style="font-size:11px; color:var(--text-muted); align-self:center; margin:0 4px;">move</span>
+          <span class="key">Mouse</span>
+          <span style="font-size:11px; color:var(--text-muted); align-self:center; margin:0 4px;">look</span>
+        </div>
+      </div>
+
+      <div class="delete-hint" id="deleteHint">Press <strong>Delete</strong> or <strong>Backspace</strong> to remove</div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-indicator"></div>
+      <span id="statusText">Ready — Drag components from sidebar to start designing</span>
+      <div class="toolbar-spacer"></div>
+      <span id="cursorPos">0, 0 mm</span>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <h3 id="modalTitle">Export</h3>
+    <div id="modalContent"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const state = {
+  components: [],
+  selected: null,
+  viewMode: '2d',
+  zoom: 0.08,
+  panX: 0,
+  panY: 0,
+  gridSnap: true,
+  snapSize: 300,
+  dragging: null,
+  dragOffset: {x:0,y:0},
+  resizing: null,
+  isPanning: false,
+  panStart: {x:0,y:0},
+  lastPan: {x:0,y:0},
+  history: [],
+  historyIndex: -1,
+  materials: {
+    roof: '#5a5a5a',
+    wall: '#8b7355',
+    post: '#6b4226',
+    floor: '#8a7a60'
+  },
+  nextId: 1
+};
+
+// Component templates (all in mm)
+const TEMPLATES = {
+  'standard-bay': { name:'Standard Bay', w:3600, d:3600, h:3000, color:'#d4a574', door:'sliding', type:'bay' },
+  'large-bay': { name:'Large Bay', w:3600, d:4200, h:3000, color:'#d4a574', door:'sliding', type:'bay' },
+  'foaling-bay': { name:'Foaling Bay', w:4800, d:4800, h:3200, color:'#d4a574', door:'dutch', type:'bay' },
+  'wash-bay': { name:'Wash Bay', w:3600, d:3000, h:3000, color:'#7fb3d4', door:'none', type:'utility' },
+  'tack-room': { name:'Tack Room', w:3600, d:3000, h:3000, color:'#a08060', door:'hinged', type:'utility' },
+  'feed-room': { name:'Feed Room', w:3000, d:3000, h:3000, color:'#b8a070', door:'hinged', type:'utility' },
+  'breezeway': { name:'Breezeway', w:3600, d:12000, h:3600, color:'#c0b090', door:'none', type:'breezeway' },
+  'roof-extension': { name:'Roof Extension', w:2400, d:3600, h:2800, color:'#a09080', door:'none', type:'roof' }
+};
+
+// ============================================================
+// CANVAS 2D
+// ============================================================
+const canvas2d = document.getElementById('canvas2d');
+const ctx = canvas2d.getContext('2d');
+
+function resizeCanvas() {
+  const container = document.getElementById('canvasContainer');
+  const dpr = window.devicePixelRatio || 1;
+  canvas2d.width = container.clientWidth * dpr;
+  canvas2d.height = container.clientHeight * dpr;
+  canvas2d.style.width = container.clientWidth + 'px';
+  canvas2d.style.height = container.clientHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  
+  // Also resize 3d canvases
+  const c3d = document.getElementById('canvas3d');
+  c3d.width = container.clientWidth;
+  c3d.height = container.clientHeight;
+  const cw = document.getElementById('walkthroughCanvas');
+  cw.width = container.clientWidth;
+  cw.height = container.clientHeight;
+}
+
+function toScreen(x, y) {
+  const container = document.getElementById('canvasContainer');
+  const cx = container.clientWidth / 2;
+  const cy = container.clientHeight / 2;
+  return {
+    x: cx + (x + state.panX) * state.zoom,
+    y: cy + (y + state.panY) * state.zoom
+  };
+}
+
+function toWorld(sx, sy) {
+  const container = document.getElementById('canvasContainer');
+  const cx = container.clientWidth / 2;
+  const cy = container.clientHeight / 2;
+  return {
+    x: (sx - cx) / state.zoom - state.panX,
+    y: (sy - cy) / state.zoom - state.panY
+  };
+}
+
+function snapToGrid(val) {
+  if (!state.gridSnap) return val;
+  return Math.round(val / state.snapSize) * state.snapSize;
+}
+
+function draw2D() {
+  if (state.viewMode !== '2d') return;
+  const container = document.getElementById('canvasContainer');
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  
+  ctx.clearRect(0, 0, w, h);
+  
+  // Background
+  ctx.fillStyle = '#1e1b17';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Grid
+  drawGrid(w, h);
+  
+  // Components
+  state.components.forEach(comp => drawComponent2D(comp));
+  
+  // Dimensions for selected
+  if (state.selected) {
+    drawDimensions(state.selected);
+  }
+  
+  requestAnimationFrame(draw2D);
+}
+
+function drawGrid(w, h) {
+  const gridMM = 1000; // 1m grid
+  const topLeft = toWorld(0, 0);
+  const bottomRight = toWorld(w, h);
+  
+  const startX = Math.floor(topLeft.x / gridMM) * gridMM;
+  const startY = Math.floor(topLeft.y / gridMM) * gridMM;
+  
+  ctx.strokeStyle = '#2a2620';
+  ctx.lineWidth = 0.5;
+  
+  for (let x = startX; x < bottomRight.x; x += gridMM) {
+    const s = toScreen(x, 0);
+    ctx.beginPath();
+    ctx.moveTo(s.x, 0);
+    ctx.lineTo(s.x, h);
+    ctx.stroke();
+  }
+  for (let y = startY; y < bottomRight.y; y += gridMM) {
+    const s = toScreen(0, y);
+    ctx.beginPath();
+    ctx.moveTo(0, s.y);
+    ctx.lineTo(w, s.y);
+    ctx.stroke();
+  }
+  
+  // Origin marker
+  const o = toScreen(0, 0);
+  ctx.strokeStyle = '#3d3730';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(o.x - 10, o.y);
+  ctx.lineTo(o.x + 10, o.y);
+  ctx.moveTo(o.x, o.y - 10);
+  ctx.lineTo(o.x, o.y + 10);
+  ctx.stroke();
+}
+
+function drawComponent2D(comp) {
+  const rot = (comp.rotation || 0) * Math.PI / 180;
+  const cw = rot === Math.PI/2 || rot === 3*Math.PI/2 ? comp.d : comp.w;
+  const cd = rot === Math.PI/2 || rot === 3*Math.PI/2 ? comp.w : comp.d;
+  
+  const tl = toScreen(comp.x, comp.y);
+  const sw = cw * state.zoom;
+  const sd = cd * state.zoom;
+  
+  const isSelected = state.selected && state.selected.id === comp.id;
+  
+  // Fill
+  ctx.fillStyle = comp.color + (isSelected ? '' : '99');
+  ctx.fillRect(tl.x, tl.y, sw, sd);
+  
+  // Border
+  ctx.strokeStyle = isSelected ? '#c4843e' : '#5a5248';
+  ctx.lineWidth = isSelected ? 2 : 1;
+  ctx.strokeRect(tl.x, tl.y, sw, sd);
+  
+  // Selection handles
+  if (isSelected) {
+    const hs = 6;
+    ctx.fillStyle = '#c4843e';
+    [[tl.x, tl.y], [tl.x+sw, tl.y], [tl.x, tl.y+sd], [tl.x+sw, tl.y+sd]].forEach(([hx,hy]) => {
+      ctx.fillRect(hx-hs/2, hy-hs/2, hs, hs);
+    });
+  }
+  
+  // Door indicator
+  if (comp.door && comp.door !== 'none') {
+    ctx.strokeStyle = isSelected ? '#c4843e' : '#7a7268';
+    ctx.lineWidth = 2;
+    const doorW = Math.min(sw * 0.6, 1200 * state.zoom);
+    const doorX = tl.x + (sw - doorW) / 2;
+    ctx.beginPath();
+    ctx.moveTo(doorX, tl.y + sd);
+    ctx.lineTo(doorX + doorW, tl.y + sd);
+    ctx.stroke();
+    
+    // Door swing arc
+    if (comp.door === 'hinged' || comp.door === 'dutch') {
+      ctx.strokeStyle = isSelected ? '#c4843e55' : '#5a524855';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(doorX, tl.y + sd, doorW, 0, Math.PI/2, false);
+      ctx.stroke();
+    }
+  }
+  
+  // Label
+  if (sw > 40) {
+    ctx.fillStyle = isSelected ? '#fff' : '#e8e0d4';
+    ctx.font = `${Math.max(10, Math.min(13, sw/6))}px "DM Sans"`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(comp.name, tl.x + sw/2, tl.y + sd/2 - 6);
+    
+    ctx.fillStyle = isSelected ? '#ffffffaa' : '#9a8e7f';
+    ctx.font = `${Math.max(8, Math.min(10, sw/8))}px "DM Sans"`;
+    ctx.fillText(`${comp.w} × ${comp.d}`, tl.x + sw/2, tl.y + sd/2 + 8);
+  }
+  
+  // Posts (corner dots)
+  const postR = Math.max(2, 3 * state.zoom * 20);
+  ctx.fillStyle = state.materials.post;
+  [[tl.x, tl.y], [tl.x+sw, tl.y], [tl.x, tl.y+sd], [tl.x+sw, tl.y+sd]].forEach(([px,py]) => {
+    ctx.beginPath();
+    ctx.arc(px, py, postR, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+function drawDimensions(comp) {
+  const rot = (comp.rotation || 0) * Math.PI / 180;
+  const cw = rot === Math.PI/2 || rot === 3*Math.PI/2 ? comp.d : comp.w;
+  const cd = rot === Math.PI/2 || rot === 3*Math.PI/2 ? comp.w : comp.d;
+  
+  const tl = toScreen(comp.x, comp.y);
+  const sw = cw * state.zoom;
+  const sd = cd * state.zoom;
+  const offset = 20;
+  
+  ctx.strokeStyle = '#c4843e88';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  
+  // Top dimension
+  ctx.beginPath();
+  ctx.moveTo(tl.x, tl.y - offset);
+  ctx.lineTo(tl.x + sw, tl.y - offset);
+  ctx.stroke();
+  // Ticks
+  ctx.beginPath();
+  ctx.moveTo(tl.x, tl.y - offset - 4);
+  ctx.lineTo(tl.x, tl.y - offset + 4);
+  ctx.moveTo(tl.x + sw, tl.y - offset - 4);
+  ctx.lineTo(tl.x + sw, tl.y - offset + 4);
+  ctx.stroke();
+  
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#c4843e';
+  ctx.font = '10px "DM Sans"';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${cw} mm`, tl.x + sw/2, tl.y - offset - 6);
+  
+  // Left dimension
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(tl.x - offset, tl.y);
+  ctx.lineTo(tl.x - offset, tl.y + sd);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(tl.x - offset - 4, tl.y);
+  ctx.lineTo(tl.x - offset + 4, tl.y);
+  ctx.moveTo(tl.x - offset - 4, tl.y + sd);
+  ctx.lineTo(tl.x - offset + 4, tl.y + sd);
+  ctx.stroke();
+  
+  ctx.setLineDash([]);
+  ctx.save();
+  ctx.translate(tl.x - offset - 6, tl.y + sd/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText(`${cd} mm`, 0, 0);
+  ctx.restore();
+}
+
+// ============================================================
+// INTERACTION - 2D
+// ============================================================
+function getCompAtPos(mx, my) {
+  const world = toWorld(mx, my);
+  for (let i = state.components.length - 1; i >= 0; i--) {
+    const c = state.components[i];
+    const rot = (c.rotation || 0) * Math.PI / 180;
+    const cw = rot === Math.PI/2 || rot === 3*Math.PI/2 ? c.d : c.w;
+    const cd = rot === Math.PI/2 || rot === 3*Math.PI/2 ? c.w : c.d;
+    if (world.x >= c.x && world.x <= c.x + cw && world.y >= c.y && world.y <= c.y + cd) {
+      return c;
+    }
+  }
+  return null;
+}
+
+canvas2d.addEventListener('mousedown', e => {
+  if (state.viewMode !== '2d') return;
+  const rect = canvas2d.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  
+  if (e.button === 1 || (e.button === 0 && e.altKey)) {
+    state.isPanning = true;
+    state.panStart = {x: e.clientX, y: e.clientY};
+    state.lastPan = {x: state.panX, y: state.panY};
+    canvas2d.style.cursor = 'grab';
+    return;
+  }
+  
+  const comp = getCompAtPos(mx, my);
+  if (comp) {
+    selectComponent(comp);
+    const world = toWorld(mx, my);
+    state.dragging = comp;
+    state.dragOffset = {x: world.x - comp.x, y: world.y - comp.y};
+    canvas2d.style.cursor = 'move';
+    saveHistory();
+  } else {
+    selectComponent(null);
+  }
+});
+
+canvas2d.addEventListener('mousemove', e => {
+  if (state.viewMode !== '2d') return;
+  const rect = canvas2d.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const world = toWorld(mx, my);
+  
+  document.getElementById('cursorPos').textContent = `${Math.round(world.x)}, ${Math.round(world.y)} mm`;
+  
+  if (state.isPanning) {
+    const dx = (e.clientX - state.panStart.x) / state.zoom;
+    const dy = (e.clientY - state.panStart.y) / state.zoom;
+    state.panX = state.lastPan.x + dx;
+    state.panY = state.lastPan.y + dy;
+    return;
+  }
+  
+  if (state.dragging) {
+    state.dragging.x = snapToGrid(world.x - state.dragOffset.x);
+    state.dragging.y = snapToGrid(world.y - state.dragOffset.y);
+    updateProps();
+    updateSummary();
+    return;
+  }
+  
+  const comp = getCompAtPos(mx, my);
+  canvas2d.style.cursor = comp ? 'move' : 'crosshair';
+});
+
+canvas2d.addEventListener('mouseup', () => {
+  state.dragging = null;
+  state.isPanning = false;
+  canvas2d.style.cursor = 'crosshair';
+});
+
+canvas2d.addEventListener('wheel', e => {
+  if (state.viewMode !== '2d') return;
+  e.preventDefault();
+  const factor = e.deltaY > 0 ? 0.9 : 1.1;
+  state.zoom = Math.max(0.01, Math.min(0.5, state.zoom * factor));
+  document.getElementById('zoomDisplay').textContent = Math.round(state.zoom * 1250) + '%';
+}, {passive:false});
+
+// Drag and drop from sidebar
+document.querySelectorAll('.component-card').forEach(card => {
+  card.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', card.dataset.type);
+  });
+});
+
+canvas2d.addEventListener('dragover', e => { e.preventDefault(); });
+canvas2d.addEventListener('drop', e => {
+  e.preventDefault();
+  const type = e.dataTransfer.getData('text/plain');
+  if (!TEMPLATES[type]) return;
+  
+  const rect = canvas2d.getBoundingClientRect();
+  const world = toWorld(e.clientX - rect.left, e.clientY - rect.top);
+  const tmpl = TEMPLATES[type];
+  
+  const comp = {
+    id: state.nextId++,
+    type,
+    name: tmpl.name,
+    x: snapToGrid(world.x - tmpl.w/2),
+    y: snapToGrid(world.y - tmpl.d/2),
+    w: tmpl.w,
+    d: tmpl.d,
+    h: tmpl.h,
+    color: tmpl.color,
+    door: tmpl.door,
+    doorType: tmpl.door,
+    rotation: 0,
+    componentType: tmpl.type
+  };
+  
+  saveHistory();
+  state.components.push(comp);
+  selectComponent(comp);
+  updateSummary();
+  setStatus(`Added ${comp.name}`);
+});
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected) {
+    deleteSelected();
+  }
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+    e.shiftKey ? redo() : undo();
+  }
+  if (e.key === 'd' && (e.ctrlKey || e.metaKey) && state.selected) {
+    e.preventDefault();
+    duplicateSelected();
+  }
+});
+
+// ============================================================
+// SELECTION & PROPERTIES
+// ============================================================
+function selectComponent(comp) {
+  state.selected = comp;
+  const noSel = document.getElementById('noSelection');
+  const panel = document.getElementById('propsPanel');
+  const hint = document.getElementById('deleteHint');
+  
+  if (comp) {
+    noSel.style.display = 'none';
+    panel.style.display = 'block';
+    hint.style.display = 'block';
+    document.getElementById('selectedName').textContent = comp.name;
+    document.getElementById('propWidth').value = comp.w;
+    document.getElementById('propDepth').value = comp.d;
+    document.getElementById('propHeight').value = comp.h;
+    document.getElementById('propRotation').value = comp.rotation || 0;
+    document.getElementById('propDoor').value = comp.door || 'none';
+    
+    // Show dimension badge
+    document.getElementById('dimensionBadge').textContent = `${comp.w} × ${comp.d} × ${comp.h} mm`;
+  } else {
+    noSel.style.display = '';
+    panel.style.display = 'none';
+    hint.style.display = 'none';
+    document.getElementById('dimensionBadge').textContent = '';
+  }
+}
+
+function updateProps() {
+  if (!state.selected) return;
+  document.getElementById('propWidth').value = state.selected.w;
+  document.getElementById('propDepth').value = state.selected.d;
+}
+
+// Property input handlers
+['propWidth','propDepth','propHeight'].forEach(id => {
+  document.getElementById(id).addEventListener('change', e => {
+    if (!state.selected) return;
+    saveHistory();
+    const key = id === 'propWidth' ? 'w' : id === 'propDepth' ? 'd' : 'h';
+    state.selected[key] = Math.max(500, parseInt(e.target.value) || 0);
+    updateSummary();
+    document.getElementById('dimensionBadge').textContent = `${state.selected.w} × ${state.selected.d} × ${state.selected.h} mm`;
+  });
+});
+
+document.getElementById('propRotation').addEventListener('change', e => {
+  if (!state.selected) return;
+  saveHistory();
+  state.selected.rotation = parseInt(e.target.value);
+});
+
+document.getElementById('propDoor').addEventListener('change', e => {
+  if (!state.selected) return;
+  saveHistory();
+  state.selected.door = e.target.value;
+  state.selected.doorType = e.target.value;
+});
+
+function deleteSelected() {
+  if (!state.selected) return;
+  saveHistory();
+  state.components = state.components.filter(c => c.id !== state.selected.id);
+  const name = state.selected.name;
+  selectComponent(null);
+  updateSummary();
+  setStatus(`Removed ${name}`);
+}
+
+function duplicateSelected() {
+  if (!state.selected) return;
+  saveHistory();
+  const copy = {...state.selected, id: state.nextId++, x: state.selected.x + 600, y: state.selected.y + 600};
+  state.components.push(copy);
+  selectComponent(copy);
+  updateSummary();
+  setStatus(`Duplicated ${copy.name}`);
+}
+
+// ============================================================
+// MATERIALS
+// ============================================================
+document.querySelectorAll('.color-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    const target = opt.dataset.target;
+    const color = opt.dataset.color;
+    state.materials[target] = color;
+    opt.parentElement.querySelectorAll('.color-option').forEach(o => o.classList.remove('active'));
+    opt.classList.add('active');
+    setStatus(`Updated ${target} colour`);
+  });
+});
+
+// ============================================================
+// TABS
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+    document.getElementById('tab-' + tab.dataset.tab).style.display = '';
+    if (tab.dataset.tab === 'export') updateSummary();
+  });
+});
+
+// ============================================================
+// VIEW MODE
+// ============================================================
+document.querySelectorAll('.view-toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    switchView(btn.dataset.view);
+  });
+});
+
+function switchView(mode) {
+  state.viewMode = mode;
+  canvas2d.style.display = mode === '2d' ? 'block' : 'none';
+  document.getElementById('canvas3d').style.display = mode === '3d' ? 'block' : 'none';
+  document.getElementById('walkthroughCanvas').style.display = mode === 'walkthrough' ? 'block' : 'none';
+  document.getElementById('walkthroughControls').style.display = mode === 'walkthrough' ? 'block' : 'none';
+  document.getElementById('toolbar2d').style.display = mode === '2d' ? 'flex' : 'none';
+  
+  if (mode === '3d') {
+    build3DScene();
+  } else if (mode === 'walkthrough') {
+    buildWalkthrough();
+  } else {
+    draw2D();
+  }
+}
+
+// ============================================================
+// 3D VIEW (Three.js)
+// ============================================================
+let scene3d, camera3d, renderer3d, controls3d, animId3d;
+
+function build3DScene() {
+  if (animId3d) cancelAnimationFrame(animId3d);
+  
+  const canvas = document.getElementById('canvas3d');
+  const container = document.getElementById('canvasContainer');
+  
+  scene3d = new THREE.Scene();
+  scene3d.background = new THREE.Color(0x1e1b17);
+  scene3d.fog = new THREE.Fog(0x1e1b17, 50, 150);
+  
+  camera3d = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 500);
+  
+  renderer3d = new THREE.WebGLRenderer({canvas, antialias:true});
+  renderer3d.setSize(container.clientWidth, container.clientHeight);
+  renderer3d.shadowMap.enabled = true;
+  renderer3d.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer3d.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer3d.toneMappingExposure = 1.2;
+  
+  // Lights
+  const ambient = new THREE.AmbientLight(0xfff5e0, 0.4);
+  scene3d.add(ambient);
+  
+  const sun = new THREE.DirectionalLight(0xfff5e0, 1.0);
+  sun.position.set(20, 30, 15);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = 2048;
+  sun.shadow.mapSize.height = 2048;
+  sun.shadow.camera.near = 0.5;
+  sun.shadow.camera.far = 100;
+  sun.shadow.camera.left = -40;
+  sun.shadow.camera.right = 40;
+  sun.shadow.camera.top = 40;
+  sun.shadow.camera.bottom = -40;
+  scene3d.add(sun);
+  
+  const fill = new THREE.DirectionalLight(0xb0c4de, 0.3);
+  fill.position.set(-10, 15, -10);
+  scene3d.add(fill);
+  
+  // Ground plane
+  const groundGeo = new THREE.PlaneGeometry(200, 200);
+  const groundMat = new THREE.MeshStandardMaterial({color: 0x4a6b3a, roughness:0.9});
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.receiveShadow = true;
+  scene3d.add(ground);
+  
+  // Build stable components
+  const SCALE = 0.001; // mm to meters
+  let centerX = 0, centerZ = 0;
+  
+  if (state.components.length > 0) {
+    let sumX = 0, sumZ = 0;
+    state.components.forEach(c => {
+      const rot = (c.rotation || 0) * Math.PI / 180;
+      const cw = rot === Math.PI/2 || rot === 3*Math.PI/2 ? c.d : c.w;
+      const cd = rot === Math.PI/2 || rot === 3*Math.PI/2 ? c.w : c.d;
+      sumX += (c.x + cw/2) * SCALE;
+      sumZ += (c.y + cd/2) * SCALE;
+    });
+    centerX = sumX / state.components.length;
+    centerZ = sumZ / state.components.length;
+  }
+  
+  state.components.forEach(comp => {
+    const group = buildComponent3D(comp, SCALE);
+    scene3d.add(group);
+  });
+  
+  // Camera position
+  const dist = Math.max(10, state.components.length * 3);
+  camera3d.position.set(centerX + dist * 0.7, dist * 0.5, centerZ + dist * 0.7);
+  camera3d.lookAt(centerX, 1.5, centerZ);
+  
+  // Simple orbit controls (manual)
+  let isDragging = false;
+  let prevMouse = {x:0, y:0};
+  let orbitAngle = Math.PI/4;
+  let orbitPitch = 0.4;
+  let orbitDist = dist;
+  
+  function updateOrbitCamera() {
+    camera3d.position.x = centerX + Math.sin(orbitAngle) * Math.cos(orbitPitch) * orbitDist;
+    camera3d.position.y = Math.sin(orbitPitch) * orbitDist + 2;
+    camera3d.position.z = centerZ + Math.cos(orbitAngle) * Math.cos(orbitPitch) * orbitDist;
+    camera3d.lookAt(centerX, 1.5, centerZ);
+  }
+  
+  canvas.addEventListener('mousedown', e => { isDragging = true; prevMouse = {x:e.clientX, y:e.clientY}; });
+  canvas.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    orbitAngle -= dx * 0.005;
+    orbitPitch = Math.max(0.05, Math.min(1.4, orbitPitch + dy * 0.005));
+    prevMouse = {x:e.clientX, y:e.clientY};
+    updateOrbitCamera();
+  });
+  canvas.addEventListener('mouseup', () => isDragging = false);
+  canvas.addEventListener('mouseleave', () => isDragging = false);
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    orbitDist = Math.max(5, Math.min(80, orbitDist + e.deltaY * 0.02));
+    updateOrbitCamera();
+  }, {passive:false});
+  
+  updateOrbitCamera();
+  
+  function animate3D() {
+    if (state.viewMode !== '3d') return;
+    animId3d = requestAnimationFrame(animate3D);
+    renderer3d.render(scene3d, camera3d);
+  }
+  animate3D();
+}
+
+function buildComponent3D(comp, SCALE) {
+  const group = new THREE.Group();
+  const rot = (comp.rotation || 0) * Math.PI / 180;
+  const w = comp.w * SCALE;
+  const d = comp.d * SCALE;
+  const h = comp.h * SCALE;
+  
+  const cx = comp.x * SCALE;
+  const cz = comp.y * SCALE;
+  
+  const wallColor = new THREE.Color(state.materials.wall);
+  const roofColor = new THREE.Color(state.materials.roof);
+  const postColor = new THREE.Color(state.materials.post);
+  const floorColor = new THREE.Color(state.materials.floor);
+  
+  // Floor
+  const floorGeo = new THREE.BoxGeometry(w, 0.05, d);
+  const floorMat = new THREE.MeshStandardMaterial({color:floorColor, roughness:0.85});
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.position.set(cx + w/2, 0.025, cz + d/2);
+  floor.receiveShadow = true;
+  group.add(floor);
+  
+  const wallMat = new THREE.MeshStandardMaterial({color:wallColor, roughness:0.7});
+  const wallThick = 0.1;
+  
+  if (comp.componentType !== 'breezeway') {
+    // Back wall
+    const backGeo = new THREE.BoxGeometry(w, h, wallThick);
+    const back = new THREE.Mesh(backGeo, wallMat);
+    back.position.set(cx + w/2, h/2, cz + wallThick/2);
+    back.castShadow = true;
+    back.receiveShadow = true;
+    group.add(back);
+    
+    // Left wall
+    const leftGeo = new THREE.BoxGeometry(wallThick, h, d);
+    const left = new THREE.Mesh(leftGeo, wallMat);
+    left.position.set(cx + wallThick/2, h/2, cz + d/2);
+    left.castShadow = true;
+    left.receiveShadow = true;
+    group.add(left);
+    
+    // Right wall
+    const right = new THREE.Mesh(leftGeo, wallMat);
+    right.position.set(cx + w - wallThick/2, h/2, cz + d/2);
+    right.castShadow = true;
+    right.receiveShadow = true;
+    group.add(right);
+    
+    // Front wall with door opening
+    if (comp.door === 'none') {
+      const frontGeo = new THREE.BoxGeometry(w, h, wallThick);
+      const front = new THREE.Mesh(frontGeo, wallMat);
+      front.position.set(cx + w/2, h/2, cz + d - wallThick/2);
+      front.castShadow = true;
+      group.add(front);
+    } else {
+      const doorW = Math.min(w * 0.5, 1.2);
+      const doorH = Math.min(h * 0.8, 2.4);
+      const sideW = (w - doorW) / 2;
+      
+      // Left of door
+      if (sideW > 0.05) {
+        const fl = new THREE.Mesh(new THREE.BoxGeometry(sideW, h, wallThick), wallMat);
+        fl.position.set(cx + sideW/2, h/2, cz + d - wallThick/2);
+        fl.castShadow = true;
+        group.add(fl);
+      }
+      // Right of door
+      if (sideW > 0.05) {
+        const fr = new THREE.Mesh(new THREE.BoxGeometry(sideW, h, wallThick), wallMat);
+        fr.position.set(cx + w - sideW/2, h/2, cz + d - wallThick/2);
+        fr.castShadow = true;
+        group.add(fr);
+      }
+      // Above door
+      const aboveH = h - doorH;
+      if (aboveH > 0.05) {
+        const fa = new THREE.Mesh(new THREE.BoxGeometry(doorW, aboveH, wallThick), wallMat);
+        fa.position.set(cx + w/2, doorH + aboveH/2, cz + d - wallThick/2);
+        fa.castShadow = true;
+        group.add(fa);
+      }
+      
+      // Door (dutch = bottom half)
+      if (comp.door === 'dutch') {
+        const dutchH = doorH * 0.5;
+        const doorMat = new THREE.MeshStandardMaterial({color:postColor, roughness:0.6});
+        const dutchDoor = new THREE.Mesh(new THREE.BoxGeometry(doorW, dutchH, 0.05), doorMat);
+        dutchDoor.position.set(cx + w/2, dutchH/2, cz + d - wallThick/2 + 0.05);
+        dutchDoor.castShadow = true;
+        group.add(dutchDoor);
+      }
+    }
+  }
+  
+  // Corner posts
+  const postW = 0.15;
+  const postGeo = new THREE.BoxGeometry(postW, h + 0.1, postW);
+  const postMat = new THREE.MeshStandardMaterial({color:postColor, roughness:0.5});
+  [[cx, cz], [cx+w, cz], [cx, cz+d], [cx+w, cz+d]].forEach(([px, pz]) => {
+    const post = new THREE.Mesh(postGeo, postMat);
+    post.position.set(px, (h+0.1)/2, pz);
+    post.castShadow = true;
+    group.add(post);
+  });
+  
+  // Roof
+  const roofOverhang = 0.3;
+  const roofPeakH = h + 0.8;
+  const roofMat = new THREE.MeshStandardMaterial({color:roofColor, roughness:0.4, metalness:0.3});
+  
+  // Simple gable roof
+  const roofShape = new THREE.Shape();
+  const rw = w + roofOverhang * 2;
+  const rd = d + roofOverhang * 2;
+  roofShape.moveTo(0, 0);
+  roofShape.lineTo(rw/2, 0.8);
+  roofShape.lineTo(rw, 0);
+  roofShape.lineTo(0, 0);
+  
+  const extrudeSettings = {depth: rd, bevelEnabled: false};
+  const roofGeo = new THREE.ExtrudeGeometry(roofShape, extrudeSettings);
+  const roof = new THREE.Mesh(roofGeo, roofMat);
+  roof.position.set(cx - roofOverhang, h, cz - roofOverhang);
+  roof.castShadow = true;
+  roof.receiveShadow = true;
+  group.add(roof);
+  
+  // Apply rotation around center
+  if (comp.rotation) {
+    const pivotX = cx + w/2;
+    const pivotZ = cz + d/2;
+    group.children.forEach(child => {
+      child.position.x -= pivotX;
+      child.position.z -= pivotZ;
+    });
+    group.rotation.y = -rot;
+    group.position.x = pivotX;
+    group.position.z = pivotZ;
+  }
+  
+  return group;
+}
+
+// ============================================================
+// WALKTHROUGH MODE
+// ============================================================
+let sceneWalk, cameraWalk, rendererWalk, animIdWalk;
+let walkState = {yaw: 0, pitch: 0, x: 0, z: 5, speed: 0.08};
+let walkKeys = {};
+let walkMouseDown = false, walkPrevMouse = {x:0, y:0};
+
+function buildWalkthrough() {
+  if (animIdWalk) cancelAnimationFrame(animIdWalk);
+  
+  const canvas = document.getElementById('walkthroughCanvas');
+  const container = document.getElementById('canvasContainer');
+  
+  sceneWalk = new THREE.Scene();
+  sceneWalk.background = new THREE.Color(0x87CEEB);
+  sceneWalk.fog = new THREE.Fog(0x87CEEB, 30, 80);
+  
+  cameraWalk = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientHeight, 0.1, 200);
+  
+  rendererWalk = new THREE.WebGLRenderer({canvas, antialias:true});
+  rendererWalk.setSize(container.clientWidth, container.clientHeight);
+  rendererWalk.shadowMap.enabled = true;
+  rendererWalk.toneMapping = THREE.ACESFilmicToneMapping;
+  rendererWalk.toneMappingExposure = 1.4;
+  
+  // Lights
+  sceneWalk.add(new THREE.AmbientLight(0xfff8f0, 0.5));
+  const sun = new THREE.DirectionalLight(0xfff5e0, 1.2);
+  sun.position.set(15, 25, 10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -40;
+  sun.shadow.camera.right = 40;
+  sun.shadow.camera.top = 40;
+  sun.shadow.camera.bottom = -40;
+  sceneWalk.add(sun);
+  
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(200, 200, 20, 20);
+  const groundMat = new THREE.MeshStandardMaterial({color:0x5a7b4a, roughness:0.95});
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI/2;
+  ground.receiveShadow = true;
+  sceneWalk.add(ground);
+  
+  // Build stable
+  const SCALE = 0.001;
+  state.components.forEach(comp => {
+    sceneWalk.add(buildComponent3D(comp, SCALE));
+  });
+  
+  // Position camera
+  if (state.components.length > 0) {
+    const first = state.components[0];
+    walkState.x = first.x * SCALE + first.w * SCALE / 2;
+    walkState.z = (first.y + first.d) * SCALE + 4;
+  } else {
+    walkState.x = 0;
+    walkState.z = 8;
+  }
+  walkState.yaw = Math.PI;
+  walkState.pitch = 0;
+  
+  // Mouse look
+  canvas.addEventListener('mousedown', e => {
+    walkMouseDown = true;
+    walkPrevMouse = {x:e.clientX, y:e.clientY};
+  });
+  canvas.addEventListener('mousemove', e => {
+    if (!walkMouseDown) return;
+    const dx = e.clientX - walkPrevMouse.x;
+    const dy = e.clientY - walkPrevMouse.y;
+    walkState.yaw -= dx * 0.003;
+    walkState.pitch = Math.max(-1.2, Math.min(1.2, walkState.pitch - dy * 0.003));
+    walkPrevMouse = {x:e.clientX, y:e.clientY};
+  });
+  canvas.addEventListener('mouseup', () => walkMouseDown = false);
+  canvas.addEventListener('mouseleave', () => walkMouseDown = false);
+  
+  document.addEventListener('keydown', e => { walkKeys[e.key.toLowerCase()] = true; });
+  document.addEventListener('keyup', e => { walkKeys[e.key.toLowerCase()] = false; });
+  
+  function animateWalk() {
+    if (state.viewMode !== 'walkthrough') return;
+    animIdWalk = requestAnimationFrame(animateWalk);
+    
+    // Movement
+    const forward = {x: Math.sin(walkState.yaw), z: Math.cos(walkState.yaw)};
+    const right = {x: Math.cos(walkState.yaw), z: -Math.sin(walkState.yaw)};
+    
+    if (walkKeys['w']) { walkState.x += forward.x * walkState.speed; walkState.z += forward.z * walkState.speed; }
+    if (walkKeys['s']) { walkState.x -= forward.x * walkState.speed; walkState.z -= forward.z * walkState.speed; }
+    if (walkKeys['a']) { walkState.x -= right.x * walkState.speed; walkState.z -= right.z * walkState.speed; }
+    if (walkKeys['d']) { walkState.x += right.x * walkState.speed; walkState.z += right.z * walkState.speed; }
+    
+    cameraWalk.position.set(walkState.x, 1.7, walkState.z);
+    const lookX = walkState.x + Math.sin(walkState.yaw) * Math.cos(walkState.pitch);
+    const lookY = 1.7 + Math.sin(walkState.pitch);
+    const lookZ = walkState.z + Math.cos(walkState.yaw) * Math.cos(walkState.pitch);
+    cameraWalk.lookAt(lookX, lookY, lookZ);
+    
+    rendererWalk.render(sceneWalk, cameraWalk);
+  }
+  animateWalk();
+}
+
+// ============================================================
+// HISTORY (Undo/Redo)
+// ============================================================
+function saveHistory() {
+  state.history = state.history.slice(0, state.historyIndex + 1);
+  state.history.push(JSON.stringify(state.components));
+  state.historyIndex = state.history.length - 1;
+  if (state.history.length > 50) {
+    state.history.shift();
+    state.historyIndex--;
+  }
+}
+
+function undo() {
+  if (state.historyIndex <= 0) return;
+  state.historyIndex--;
+  state.components = JSON.parse(state.history[state.historyIndex]);
+  selectComponent(null);
+  updateSummary();
+  setStatus('Undo');
+}
+
+function redo() {
+  if (state.historyIndex >= state.history.length - 1) return;
+  state.historyIndex++;
+  state.components = JSON.parse(state.history[state.historyIndex]);
+  selectComponent(null);
+  updateSummary();
+  setStatus('Redo');
+}
+
+// ============================================================
+// ZOOM/GRID
+// ============================================================
+function zoomIn() { state.zoom = Math.min(0.5, state.zoom * 1.2); document.getElementById('zoomDisplay').textContent = Math.round(state.zoom*1250)+'%'; }
+function zoomOut() { state.zoom = Math.max(0.01, state.zoom * 0.8); document.getElementById('zoomDisplay').textContent = Math.round(state.zoom*1250)+'%'; }
+function zoomFit() {
+  if (state.components.length === 0) { state.zoom = 0.08; state.panX = 0; state.panY = 0; return; }
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  state.components.forEach(c => {
+    const rot = (c.rotation || 0) * Math.PI / 180;
+    const cw = rot === Math.PI/2 || rot === 3*Math.PI/2 ? c.d : c.w;
+    const cd = rot === Math.PI/2 || rot === 3*Math.PI/2 ? c.w : c.d;
+    minX = Math.min(minX, c.x);
+    minY = Math.min(minY, c.y);
+    maxX = Math.max(maxX, c.x + cw);
+    maxY = Math.max(maxY, c.y + cd);
+  });
+  const container = document.getElementById('canvasContainer');
+  const cw = container.clientWidth - 80;
+  const ch = container.clientHeight - 80;
+  const rangeX = maxX - minX;
+  const rangeY = maxY - minY;
+  state.zoom = Math.min(cw / rangeX, ch / rangeY) * 0.85;
+  state.panX = -(minX + rangeX/2);
+  state.panY = -(minY + rangeY/2);
+  document.getElementById('zoomDisplay').textContent = Math.round(state.zoom*1250)+'%';
+}
+
+function snapToggle() {
+  state.gridSnap = !state.gridSnap;
+  document.getElementById('snapBtn').classList.toggle('active', state.gridSnap);
+  setStatus(`Grid snap ${state.gridSnap ? 'ON' : 'OFF'}`);
+}
+
+// ============================================================
+// SUMMARY
+// ============================================================
+function updateSummary() {
+  const body = document.getElementById('summaryBody');
+  const counts = {};
+  let totalArea = 0;
+  
+  state.components.forEach(c => {
+    counts[c.name] = (counts[c.name] || 0) + 1;
+    totalArea += (c.w / 1000) * (c.d / 1000);
+  });
+  
+  if (state.components.length === 0) {
+    body.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);">Add components to see summary</td></tr>';
+  } else {
+    body.innerHTML = Object.entries(counts).map(([name, qty]) => {
+      const tmpl = state.components.find(c => c.name === name);
+      const area = ((tmpl.w / 1000) * (tmpl.d / 1000) * qty).toFixed(1);
+      return `<tr><td>${name}</td><td>${qty}</td><td>${area} m²</td></tr>`;
+    }).join('');
+  }
+  
+  document.getElementById('totalArea').textContent = totalArea.toFixed(1);
+  document.getElementById('totalComponents').textContent = state.components.length;
+}
+
+// ============================================================
+// EXPORT
+// ============================================================
+function exportPDF() {
+  // Generate a canvas-based PDF floor plan
+  const pdfCanvas = document.createElement('canvas');
+  const pw = 2480; // A4 at ~300dpi landscape
+  const ph = 1754;
+  pdfCanvas.width = pw;
+  pdfCanvas.height = ph;
+  const pctx = pdfCanvas.getContext('2d');
+  
+  // White background
+  pctx.fillStyle = '#ffffff';
+  pctx.fillRect(0, 0, pw, ph);
+  
+  // Title block
+  pctx.fillStyle = '#1a1714';
+  pctx.fillRect(0, 0, pw, 80);
+  pctx.fillStyle = '#c4843e';
+  pctx.font = 'bold 32px "DM Sans", sans-serif';
+  pctx.fillText('StableForge — Floor Plan', 30, 52);
+  pctx.fillStyle = '#999';
+  pctx.font = '16px "DM Sans", sans-serif';
+  pctx.fillText(`Generated: ${new Date().toLocaleDateString()} | Components: ${state.components.length} | Total area: ${document.getElementById('totalArea').textContent} m²`, 30, ph - 20);
+  
+  // Draw components
+  if (state.components.length === 0) {
+    pctx.fillStyle = '#999';
+    pctx.font = '24px "DM Sans", sans-serif';
+    pctx.textAlign = 'center';
+    pctx.fillText('No components placed', pw/2, ph/2);
+  } else {
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    state.components.forEach(c => {
+      minX = Math.min(minX, c.x);
+      minY = Math.min(minY, c.y);
+      maxX = Math.max(maxX, c.x + c.w);
+      maxY = Math.max(maxY, c.y + c.d);
+    });
+    
+    const margin = 120;
+    const drawW = pw - margin * 2;
+    const drawH = ph - 160 - margin;
+    const scaleX = drawW / (maxX - minX);
+    const scaleY = drawH / (maxY - minY);
+    const scale = Math.min(scaleX, scaleY) * 0.9;
+    const offX = margin + (drawW - (maxX - minX) * scale) / 2;
+    const offY = 100 + (drawH - (maxY - minY) * scale) / 2;
+    
+    state.components.forEach(c => {
+      const x = offX + (c.x - minX) * scale;
+      const y = offY + (c.y - minY) * scale;
+      const w = c.w * scale;
+      const d = c.d * scale;
+      
+      // Fill
+      pctx.fillStyle = '#f5f0e8';
+      pctx.fillRect(x, y, w, d);
+      pctx.strokeStyle = '#333';
+      pctx.lineWidth = 2;
+      pctx.strokeRect(x, y, w, d);
+      
+      // Label
+      pctx.fillStyle = '#333';
+      pctx.font = `bold ${Math.max(12, Math.min(18, w/8))}px "DM Sans", sans-serif`;
+      pctx.textAlign = 'center';
+      pctx.textBaseline = 'middle';
+      pctx.fillText(c.name, x + w/2, y + d/2 - 10);
+      pctx.font = `${Math.max(10, Math.min(14, w/10))}px "DM Sans", sans-serif`;
+      pctx.fillStyle = '#666';
+      pctx.fillText(`${c.w} × ${c.d} mm`, x + w/2, y + d/2 + 10);
+      
+      // Dimension lines
+      pctx.strokeStyle = '#c4843e';
+      pctx.lineWidth = 1;
+      pctx.setLineDash([4,4]);
+      pctx.beginPath();
+      pctx.moveTo(x, y - 15);
+      pctx.lineTo(x + w, y - 15);
+      pctx.stroke();
+      pctx.setLineDash([]);
+      pctx.fillStyle = '#c4843e';
+      pctx.font = '11px "DM Sans", sans-serif';
+      pctx.fillText(`${c.w}`, x + w/2, y - 20);
+      
+      // Door indicator
+      if (c.door && c.door !== 'none') {
+        const doorW = Math.min(w * 0.5, 1200 * scale);
+        pctx.strokeStyle = '#c4843e';
+        pctx.lineWidth = 3;
+        pctx.beginPath();
+        pctx.moveTo(x + (w - doorW)/2, y + d);
+        pctx.lineTo(x + (w + doorW)/2, y + d);
+        pctx.stroke();
+      }
+    });
+  }
+  
+  // Border
+  pctx.strokeStyle = '#ddd';
+  pctx.lineWidth = 2;
+  pctx.strokeRect(1, 1, pw-2, ph-2);
+  
+  // Download
+  const link = document.createElement('a');
+  link.download = 'stable-floor-plan.png';
+  link.href = pdfCanvas.toDataURL('image/png');
+  link.click();
+  setStatus('Floor plan exported as PNG');
+  showModal('Export Complete', '<p style="color:var(--text-muted);">Your floor plan has been exported as a PNG image. For production use, this would generate a proper dimensioned PDF.</p>');
+}
+
+function exportImage3D() {
+  const prevMode = state.viewMode;
+  switchView('3d');
+  
+  setTimeout(() => {
+    renderer3d.render(scene3d, camera3d);
+    const link = document.createElement('a');
+    link.download = 'stable-3d-render.png';
+    link.href = document.getElementById('canvas3d').toDataURL('image/png');
+    link.click();
+    setStatus('3D render exported');
+    if (prevMode !== '3d') switchView(prevMode);
+  }, 500);
+}
+
+function generateShareLink() {
+  const data = {
+    components: state.components,
+    materials: state.materials
+  };
+  const encoded = btoa(JSON.stringify(data));
+  const fakeUrl = `${window.location.origin}${window.location.pathname}#design=${encoded.substring(0,20)}...`;
+  
+  showModal('Share Link', `
+    <p style="color:var(--text-muted); margin-bottom:12px;">In production, this generates a permanent shareable link. Design data preview:</p>
+    <input class="prop-input" style="width:100%; margin-bottom:8px;" value="${fakeUrl}" readonly onclick="this.select()">
+    <p style="font-size:11px; color:var(--text-muted);">${state.components.length} components, ${document.getElementById('totalArea').textContent} m² total</p>
+  `);
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+function showModal(title, content) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalContent').innerHTML = content;
+  document.getElementById('exportModal').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('exportModal').classList.remove('active');
+}
+
+// ============================================================
+// UTIL
+// ============================================================
+function setStatus(msg) {
+  document.getElementById('statusText').textContent = msg;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('resize', () => { resizeCanvas(); });
+resizeCanvas();
+saveHistory();
+document.getElementById('snapBtn').classList.add('active');
+draw2D();
+
+// Load from URL hash if present
+try {
+  const hash = window.location.hash;
+  if (hash.startsWith('#design=')) {
+    const data = JSON.parse(atob(hash.substring(8)));
+    if (data.components) state.components = data.components;
+    if (data.materials) state.materials = data.materials;
+    updateSummary();
+    zoomFit();
+  }
+} catch(e) {}
+</script>
+</body>
+</html>
